@@ -32,11 +32,21 @@ def basic_login(request):
     username = request.data.get('username')
     password = request.data.get('password')
 
+    if not username or not password:
+        return Response(
+            {"message": "Username and password are required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     user = authenticate(request, username=username, password=password)
     if user is not None:
-        return Response({"user_id": user.id, "username": user.username, "message": "Login Successfully"}, status=status.HTTP_200_OK)
+        return Response(
+            {"user_id": user.id, "username": user.username,
+                "message": "Login Successfully"},
+            status=status.HTTP_200_OK,
+        )
 
-    return Response({"message": "Invalid Credentials"}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"message": "Invalid Credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 @api_view(['GET'])
