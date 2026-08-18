@@ -86,11 +86,15 @@ WSGI_APPLICATION = "backend.wsgi.application"
 
 
 # Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+# Use PostgreSQL by default for this project. If the environment variable is not set,
+# fall back to the local PostgreSQL database used during development.
+
+DEFAULT_DATABASE_URL = "postgresql://postgres:Arun123@localhost:5432/jobportal_db"
+DATABASE_URL = os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL)
 
 DATABASES = {
     "default": dj_database_url.config(
-        default=os.environ.get("DATABASE_URL", f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
+        default=DATABASE_URL,
         conn_max_age=600,
         conn_health_checks=True,
     )
