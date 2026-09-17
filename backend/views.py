@@ -4,16 +4,16 @@ from rest_framework import status
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.decorators import api_view, permission_classes
+
 from .models import Job, Applications
 from .serializers import RegisterSerializer, JobSerializer, ApplicationSerializer
 
 
-@api_view(['GET'])
-def hello_api(response):
-    return Response({"message": "Hello to Django"})
-
-
 @api_view(['POST'])
+@permission_classes([AllowAny])
 def register_user(request):
     serializer = RegisterSerializer(data=request.data)
     if serializer.is_valid():
@@ -22,12 +22,9 @@ def register_user(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(['GET', 'POST'])
+@api_view(['POST'])
+@permission_classes([AllowAny])
 def basic_login(request):
-    if request.method == 'GET':
-        return Response({
-            "message": "Use POST with username and password to log in."
-        }, status=status.HTTP_200_OK)
 
     username = request.data.get('username')
     password = request.data.get('password')
@@ -40,16 +37,20 @@ def basic_login(request):
 
     user = authenticate(request, username=username, password=password)
     if user is not None:
-        return Response(
-            {"user_id": user.id, "username": user.username,
-                "message": "Login Successfully"},
-            status=status.HTTP_200_OK,
-        )
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            "message": "Login Successfully",
+            "user_id": user.id,
+            "username": user.username,
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+        }, status=status.HTTP_200_OK)
 
     return Response({"message": "Invalid Credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def jobs_view(request):
     jobs = Job.objects.all()
     serializer = JobSerializer(jobs, many=True)
@@ -57,17 +58,25 @@ def jobs_view(request):
 
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def apply_jobs(request):
-    payload = request.data.copy()
-    applicant_id = payload.get("applicant") or payload.get("applicants")
-    if applicant_id and "applicants" not in payload:
-        payload["applicants"] = applicant_id
+    applicant_id = request.data.get("applicants")
+    job_id = request.data.get("job")
 
-    if applicant_id and Applications.objects.filter(job_id=payload.get("job"), applicants_id=applicant_id).exists():
+    if Applications.objects.filter(job_id=job_id, applicants_id=applicant_id).exists():
         return Response({"message": "You have already applied"}, status=status.HTTP_400_BAD_REQUEST)
 
-    serializer = ApplicationSerializer(data=payload)
+    serializer = ApplicationSerializer(data=request.data)
+
     if serializer.is_valid():
         serializer.save()
         return Response({"message": "Application submitted"}, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+def user_applications(request, user_id):
+    applications = Applications.objects.filter(
+        applicants_id=user_id).order_by('-applied_on')
+    serializer = ApplicationSerializer(applications, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)

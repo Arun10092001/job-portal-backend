@@ -17,13 +17,15 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path
-from .views import hello_api, register_user, basic_login, jobs_view, apply_jobs
+from .views import register_user, basic_login, jobs_view, apply_jobs, user_applications
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("home/", hello_api),
     path("register/", register_user),
     path("login/", basic_login),
     path("jobs/", jobs_view),
-    path("apply/", apply_jobs)
+    path("apply/", apply_jobs),
+    path("applications/<int:user_id>/", user_applications),
+    path("token/refresh/", TokenRefreshView.as_view()),
 ]

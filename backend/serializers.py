@@ -29,3 +29,4 @@ class ApplicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Applications
         fields = "__all__"
+        depth = 1
